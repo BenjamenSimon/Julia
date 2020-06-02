@@ -1,0 +1,225 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Chris' code
+
+Let B be an infectious pressure "kernel" matrix with $(i,j)^\text{th}$ element: $$b_{i,j} = \beta c_{i,j}$$, where $c_{i,j}$ is a distance/contact matrix.
+
+```{r}
+# == Inputs ==
+# c_matrix = some sort of distance/contact matrix. Iin the n vs f case, I guess c would be one or 1/a or something.
+# beta = scalar to represent the maximum infection rate
+
+Kernel = function(c_matrix) { 
+            function(beta) { #function within a function
+                beta * c_matrix  # quick functions: no return line
+            }
+}
+
+kernel <- Kernel(c) # function to create a function
+B = kernel(beta) # calculates the infection rate matrix for a given beta
+```
+
+
+Calculating the product part.
+
+```{r}
+# == Inputs ==
+# t_inf_j = vector of infection times for all individuals, with infection times of non-infected individuals set to Inf
+# events = a 2 column matrix where the first column is the infection times, and the second is the paired removal times
+# B = the infection rate matrix
+
+# == Components ==
+# is_infected = 0/1 vector which says if each individual became infected or not
+# waifw = "who acquired infection from whom" matrix. True false matrix where the value of element (i,j) is 1 if $i$ could have infected $j$ and 0 otherwise. Susceptibles just have vector of 0s.
+# lambda_j = vector of the sums of the infectious pressure exererted on each individual who became infected
+#          = in other words it is the sum of the beta_ij for i in (the set of infected individuals).
+# I0 = the index of the initial infective
+
+prod_part <- function(t_inf_j, events, B) {
+                is_infected <- t_inf_j < Inf
+                waifw <- sapply(t_inf_j, function(t) events[,1] < t & t < events[,2])
+                lambdaj <- colSums(B[,is_infected] * waifw[, is_infected])
+                I0 <- which.min(t_inf_j[is_infected])
+                sum(log(lambdaj[-I0]))
+                # this calculates what we called sumlogsum
+}
+```
+
+Calculating the integral part.
+
+Coming from the general rule, for intervals $(a_0, a_1)$ and $(b_0, b_1)$, $$ (a_0, a_1) \cap (b_0, b_1) = 0 \lor (a_1 \land b_1 - a_0 \lor b_0).$$
+
+We can use this general rule to derive what we are interested in, which is not the intersection of the two sets, but rather how much of the infectors set occurs before the susceptibles set. This function returns a vector for $i \in \mathcal{I}$ and $j \in \mathcal{S}$, $$ 0 \lor [(I_j \land R_i) - (0 \lor I_i)]. $$
+
+We originally wanted to calculate a vector for $i \in \mathcal{I}$ and $j \in \mathcal{S}$, $$ e_{i,j} = (R_i \land I_j) - (I_i \land I_j).$$
+
+```{r}
+# == Inputs ==
+# interval_i = cbind(t_inf, t_rem)[infected, ]
+#            = 2 column matrix of the infection and removal times for the infected individuals
+# interval_j = cbind(0, t_inf)
+#            = 2 column matrix of 0s in the first column and the infection times in the second
+
+# == Components ==
+# int_start <- calculates the maximum of 0 and the infection time of infected individual i
+#              since i can only infect j after it has become infected itself
+#              this is (0 max I_i)
+# int_end <- calculates the minimum of the infection times of the every individual j in the population
+#            and the removal times of the each infected individual
+#            this is (I_j min R_i)
+
+# == Functions ==
+# "pmax()" calculates the "parallel" maximum of two vectors ie. pmax(c(1,2,3), c(3,2,1)) = c(3,2,3)
+# similarly for "pmin()"
+
+interval_intersect = function(interval_i, interval_j){
+                        int_start <- sapply(interval_j[,1], function(x) pmax(x, interval_i[,1]))
+                        int_end <- sapply(interval_j[,2], function(x) pmin(x, interval_i[,2]))
+                        pmax(int_end - int_start, 0)
+}
+```
+
+The above function calculates the equation which is derived from the general rule, but the equation we were using before is equivalent and simpler, and does not impose that the first infection time must always be at 0. Thus we will edit this function slightly to calculate the old equation.
+
+```{r}
+# == Inputs ==
+# interval_i = cbind(t_inf, t_rem)[infected, ]
+#            = 2 column matrix of the infection and removal times for the infected individuals
+# interval_j = cbind(t_inf, t_rem)
+#            = 2 column matrix of the infection and removal times for all the individuals
+
+# == Components ==
+# int_start <- calculates the minimum of removal time R_j of j and the infection time I_i of infected individual i
+#              this is (R_j min I_i)
+# int_end <- calculates the minimum of the infection times of the every individual j in the population
+#            and the removal times of the each infected individual
+#            this is (I_j min R_i)
+
+# == Functions ==
+# "pmax()" calculates the "parallel" maximum of two vectors ie. pmax(c(1,2,3), c(3,2,1)) = c(3,2,3)
+# similarly for "pmin()"
+
+interval_intersect = function(interval_i, interval_j){
+                        int_start <- sapply(interval_j[,1], function(x) pmin(x, interval_i[,1]))
+                        int_end <- sapply(interval_j[,1], function(x) pmin(x, interval_i[,2]))
+                        int_end - int_start
+                        #returns a matrix where each column is a vector for each j
+}
+```
+
+
+
+
+Then to calculate the integral part, all we need to do is multiply the revelevant rows of B and E and sum up the resulting matrix
+
+```{r}
+# == Inputs ==
+# t_inf_j = infection times
+# events = cbind(inf times, rem times)
+# B = infection rate matrix
+
+# == Components ==
+# i_infected = vector of individuals which are infected
+# E = matrix where e_ij is defined as above
+# sum(integral) calculates the double sum but in matrix notation
+
+integral_part = function(t_inf_j, events, B){
+                  i_infected = events[,1] < Inf
+                  E = interval_intersect(events[i_infected,], events)
+                  integral = E * B[i_infected,]
+                  sum(integral)
+}
+```
+
+
+Putting it all together we get:
+
+```{r}
+log_likelihood = function(beta, t_inf, t_rem){
+                    B = beta
+                    prod = prod_part(t_inf, cbind(t_inf, t_rem), B)
+                    integral = integral_part(t_inf, cbind(t_inf, t_rem), B)
+                    prod - integral
+}
+```
+
+
+
+
+
+
+```{r}
+
+Beta_mat_form <- function(dist.mat, betas, ds){
+  
+  levels <- length(betas)
+  
+  beta.mat <- dist.mat
+  
+  for(i in (levels-1):1){
+    beta.mat[which(dist.mat < ds[i])] <- betas[i]
+  }
+  
+  beta.mat[which(dist.mat >= ds[(levels-1)])] <- betas[levels]
+  diag(beta.mat) <- 0
+  
+  return(beta.mat)
+}
+```
+
+```{r}
+
+test_inf_times = c(Inf, 3, Inf, 5, 7, 9, Inf, 1, Inf)
+test_rem_times = c(Inf, 6, Inf, 8, 9.5, 27, Inf, 16, Inf)
+test_inf_inds = c(FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE)
+
+test_xcoords = c(1,1,1,2,2,2,3,3,3)
+test_ycoords = c(1,2,3,1,2,3,1,2,3)
+test_xycoords = cbind(test_xcoords,  test_ycoords)
+
+test_distmat = as.matrix(dist(cbind(test_xcoords, test_ycoords), upper = T))
+test_betamat = Beta_mat_form(test_distmat, c(0.002, 0.001), 1.5)
+
+```
+
+
+```{r}
+
+prod_part(test_inf_times, cbind(test_inf_times, test_rem_times), test_betamat) # TICK
+#-23.47214
+
+interval_intersect(cbind(test_inf_times, test_rem_times)[test_inf_inds,], cbind(0, test_inf_times)) # TICK
+
+integral_part(test_inf_times, cbind(test_inf_times, test_rem_times), test_betamat) # X
+#0.066
+
+log_likelihood(test_betamat, test_inf_times, test_rem_times) # X
+#-23.53814
+
+```
+
+
+
+
+
+
+interval_intersect(cbind(test_inf_times, test_rem_times)[test_inf_inds,], cbind(test_inf_times, test_rem_times)[test_inf_inds,])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

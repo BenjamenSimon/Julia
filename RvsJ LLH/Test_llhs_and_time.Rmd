@@ -1,0 +1,145 @@
+---
+title: "Likelihood tests"
+output: html_notebook
+---
+
+```{r Packages}
+  
+  # All likelihood code can be found in my personal package, EpidemicR.
+
+  library(devtools)
+  install_github("BenjamenSimon/EpidemicR")
+  library(EpidemicR) # For simulating and making inference on GSE epidemics
+  
+  options(scipen=999)
+
+```
+
+
+# Import the test epidemics
+
+```{r}
+setwd("~/Documents/Test_epidemics")
+res_ex1 =  read.csv("res_ex1.csv", header = F)
+xycords_ex1 =  read.csv("xycords_ex1.csv", header = F)
+distmat_ex1 =  read.csv("distmat_ex1.csv", header = F)
+betamat_ex1 =  read.csv("betamat_ex1.csv", header = F)
+```
+
+
+```{r}
+res_ex2 =  read.csv("res_ex2.csv", header = F)
+xycords_ex2 =  read.csv("xycords_ex2.csv", header = F)
+distmat_ex2 =  read.csv("distmat_ex2.csv", header = F)
+betamat_ex2 =  read.csv("betamat_ex2.csv", header = F)
+```
+
+
+```{r}
+res_ex3 =  read.csv("res_ex3.csv", header = F)
+xycords_ex3 =  read.csv("xycords_ex3.csv", header = F)
+distmat_ex3 =  read.csv("distmat_ex3.csv", header = F)
+betamat_ex3 =  read.csv("betamat_ex3.csv", header = F)
+```
+
+
+```{r}
+res_ex4 =  read.csv("res_ex4.csv", header = F)
+xycords_ex4 =  read.csv("xycords_ex4.csv", header = F)
+distmat_ex4 =  read.csv("distmat_ex4.csv", header = F)
+betamat_ex4 =  read.csv("betamat_ex4.csv", header = F)
+```
+
+
+
+# Log-likelihood value comparison
+
+```{r}
+log_likelihood(res_ex1[,2], res_ex1[,3], betamat_ex1)
+
+chris_log_likelihood(res_ex1[,2], res_ex1[,3], betamat_ex1)
+
+chris_log_likelihood_0(res_ex1[,2], res_ex1[,3], betamat_ex1)
+
+simple_log_likelihood(res_ex1[,2], res_ex1[,3], betamat_ex1)
+
+```
+
+```{r}
+log_likelihood(res_ex2[,2], res_ex2[,3], betamat_ex2)
+
+chris_log_likelihood(res_ex2[,2], res_ex2[,3], betamat_ex2)
+
+chris_log_likelihood_0(res_ex2[,2], res_ex2[,3], betamat_ex2)
+
+simple_log_likelihood(res_ex2[,2], res_ex2[,3], betamat_ex2)
+
+```
+
+```{r}
+log_likelihood(res_ex3[,2], res_ex3[,3], betamat_ex3)
+
+chris_log_likelihood(res_ex3[,2], res_ex3[,3], betamat_ex3)
+
+chris_log_likelihood_0(res_ex3[,2], res_ex3[,3], betamat_ex3)
+
+simple_log_likelihood(res_ex3[,2], res_ex3[,3], betamat_ex3)
+
+```
+
+```{r}
+log_likelihood(res_ex4[,2], res_ex4[,3], betamat_ex4)
+
+chris_log_likelihood(res_ex4[,2], res_ex4[,3], betamat_ex4)
+
+chris_log_likelihood_0(res_ex4[,2], res_ex4[,3], betamat_ex4)
+
+simple_log_likelihood(res_ex4[,2], res_ex4[,3], betamat_ex4)
+
+```
+
+
+# Time comparison
+
+```{r}
+library(microbenchmark)
+```
+
+
+```{r}
+microbenchmark(
+  log_likelihood(res_ex1[,2], res_ex1[,3], betamat_ex1),
+  log_likelihood(res_ex2[,2], res_ex2[,3], betamat_ex2),
+  log_likelihood(res_ex3[,2], res_ex3[,3], betamat_ex3),
+  log_likelihood(res_ex4[,2], res_ex4[,3], betamat_ex4)
+)
+```
+
+```{r}
+microbenchmark(
+  chris_log_likelihood(res_ex1[,2], res_ex1[,3], betamat_ex1),
+  chris_log_likelihood(res_ex2[,2], res_ex2[,3], betamat_ex2),
+  chris_log_likelihood(res_ex3[,2], res_ex3[,3], betamat_ex3),
+  chris_log_likelihood(res_ex4[,2], res_ex4[,3], betamat_ex4)
+)
+```
+
+
+```{r}
+microbenchmark(
+  chris_log_likelihood_0(res_ex1[,2], res_ex1[,3], betamat_ex1),
+  chris_log_likelihood_0(res_ex2[,2], res_ex2[,3], betamat_ex2),
+  chris_log_likelihood_0(res_ex3[,2], res_ex3[,3], betamat_ex3),
+  chris_log_likelihood_0(res_ex4[,2], res_ex4[,3], betamat_ex4)
+)
+```
+
+
+```{r}
+microbenchmark(
+  simple_log_likelihood(res_ex1[,2], res_ex1[,3], betamat_ex1),
+  simple_log_likelihood(res_ex2[,2], res_ex2[,3], betamat_ex2),
+  simple_log_likelihood(res_ex3[,2], res_ex3[,3], betamat_ex3),
+  simple_log_likelihood(res_ex4[,2], res_ex4[,3], betamat_ex4)
+)
+```

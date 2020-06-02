@@ -1,0 +1,62 @@
+---
+title: "Test Epidemic"
+output: html_notebook
+---
+
+```{r}
+
+test_inf_times = c(Inf, 3, Inf, 5, 7, 9, Inf, 1, Inf)
+test_rem_times = c(Inf, 6, Inf, 8, 9.5, 27, Inf, 16, Inf)
+test_inf_inds = c(FALSE, TRUE, FALSE, TRUE, TRUE, TRUE, FALSE, TRUE, FALSE)
+
+test_xcoords = c(1,1,1,2,2,2,3,3,3)
+test_ycoords = c(1,2,3,1,2,3,1,2,3)
+test_xycoords = cbind(test_xcoords,  test_ycoords)
+
+test_distmat = as.matrix(dist(cbind(test_xcoords, test_ycoords), upper = T))
+test_betamat = Beta_mat_form(test_distmat, c(0.002, 0.001), 1.5)
+
+```
+
+```{r}
+
+prod_part(test_inf_times, test_rem_times, test_betamat, test_inf_inds) # X
+#-23.472138032568875
+
+interval_intersect(test_inf_times, test_rem_times, test_inf_inds) # TICK
+
+
+integral_part(test_inf_times, test_rem_times, test_betamat, test_inf_inds) # TICK
+#0.31900000000000006
+
+log_likelihood(test_inf_times, test_rem_times, test_betamat) # X
+
+```
+
+```{r}
+  waifw <- sapply(test_inf_times, function(t) test_inf_times < t & t < test_rem_times)
+  #correct
+
+  lambdaj <- colSums(test_betamat[, test_inf_inds] * waifw[, test_inf_inds])
+  #correct
+  
+  I0 <- which.min(test_inf_times)
+  
+  sum(log(lambdaj[-I0]))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
